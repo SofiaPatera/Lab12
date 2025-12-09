@@ -1,9 +1,15 @@
 import networkx as nx
+from database.dao import DAO
 
 class Model:
     def __init__(self):
         """Definire le strutture dati utili"""
-        # TODO
+        self.G = nx.Graph()
+        self._lista_rifugi = []
+        self._lista_sentieri = []
+        self.idMappa = {}
+
+
 
     def build_weighted_graph(self, year: int):
         """
@@ -11,7 +17,15 @@ class Model:
         come argomento.
         Il peso del grafo è dato dal prodotto "distanza * fattore_difficolta"
         """
-        # TODO
+        self.G.clear()
+        self._lista_rifugi = DAO.leggiRifugio(year)
+        self.idMappa = {r.id: r for r in self._lista_rifugi}
+        self.G.add_nodes_from(self._lista_rifugi)
+        self._lista_sentieri = DAO.leggiSentieri(year)
+        for l in self._lista_sentieri:
+            r1 = self.idMappa[l.id_rifugio1]
+            r2 = self.idMappa[l.id_rifugio2]
+            self.G.add_edge(r1, r2, peso=l.peso)
 
     def get_edges_weight_min_max(self):
         """
