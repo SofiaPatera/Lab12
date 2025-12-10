@@ -61,7 +61,7 @@ class Model:
         minori = 0
         maggiori = 0
         if self.G.number_of_edges() == 0:
-            return None
+            return 0,0
         for u,v, data in self.G.edges(data=True):
             peso = data['peso']
             if peso < soglia:
@@ -77,82 +77,63 @@ class Model:
         for u, v, data in self.G.edges(data=True):
             if data['peso'] > soglia:
                 grafo_filtrato.add_edge(u,v,peso =data['peso'])
-        #il percorso deve contenere almeno 2 archi
-        if grafo_filtrato.number_of_edges() < 2:
+        if grafo_filtrato.number_of_edges() == 0:
             return []
 
-        minimo_cammino = None #cammino minimo
+        min_cammino = [] #cammino minimo
         min_peso = float('inf') #peso totale minimo, inizializzano a infinito o un numero molto grande
-        nodi = list(grafo_filtrato.nodes) #lista dei nodi del grafo
-        nodo_partenza = nodi[0] #fisso il nodo di partenza
-        for nodo_arrivo in nodi[1:]:
+        for nodo_partenza in grafo_filtrato.nodes():
+            for nodo_arrivo in grafo_filtrato.nodes():
+                if nodo_partenza == nodo_arrivo:
+                    continue
                 try:
                     path = nx.shortest_path(grafo_filtrato, nodo_partenza, nodo_arrivo, weight ='peso')
+                    if len(path) < 3:
+                        continue
+                    peso_totale = nx.shortest_path_length(grafo_filtrato, nodo_partenza, nodo_arrivo, weight = 'peso')
+                    if peso_totale < min_peso:
+                        min_peso = peso_totale
+                        min_cammino = path
                 except nx.NetworkXNoPath:  #mi dice che se il cammino tra i due nodi  non ce
                     continue # si passa alla coppia di nodi successiva
-
-                #calcolo il peso totale del cammino che abbiamo trovato
-                totale_weight = 0
-                for p in range(len(path)-1): # -1 perchè dobbiamo prendere gli indici dei nodi che partono da 0
-                    nodo1 = path[p]
-                    nodo2 = path[p+1]
-                    edge_weight = grafo_filtrato[nodo1][nodo2]['peso'] #prendiamo il peso dell'arco tra questi due nodi
-                    totale_weight += edge_weight #somma di tutti i pesi degli archi nel cammino
-
-                #controllo se il cammino ha almeno 3 nodi (che implica due archi)
-                if len(path) >= 3 and totale_weight < min_peso:
-                    #se il peso tot è < di quello trovato => si aggiorna
-                        min_peso = totale_weight
-                        minimo_cammino = path[:]
-
-        return minimo_cammino if minimo_cammino is not None else []
+        return min_cammino
 
     def find_cammino_ric(self, soglia):
         grafo_filtrato = nx.Graph()
         for u, v, data in self.G.edges(data=True):
             if data['peso'] > soglia:
                 grafo_filtrato.add_edge(u, v, peso=data['peso'])
-        if grafo_filtrato.number_of_edges() < 2:
+        if grafo_filtrato.number_of_edges() == 0:
             return []
+        miglior_cammino = None
+        miglior_peso = float('inf')
+        for nodo_partenza in grafo_filtrato.nodes():
+            cammino, peso = self.dfs(nodo_partenza, {nodo_partenza}, [nodo_partenza], 0, grafo_filtrato)
+            if cammino is not None and peso < miglior_peso:
+                miglior_peso = peso
+                miglior_cammino = cammino
 
-        def dfs(path, visited, weight):  # questa fz ci restituisce la tupla del miglior cammino (cammino, peso), esplorando tutti i cammini semplici
-            #iniziliazziamo
-            miglior_cammino = None
-            miglior_peso = float('inf')
+        def dfs(self, nodo, visited, cammino, peso, grafo_filtrato):  # questa fz ci restituisce la tupla del miglior cammino (cammino, peso), esplorando tutti i cammini semplici
             #se ha almeno due archi lo considero
-            if len(path) >= 3: #quindi se la lista dei nodi è maggiore o uguale di tre
-                miglior_peso = weight
-                miglior_cammino = path[:] #mi fa una copia della lista di nodi, così che anche dopo il backtracking mi rimane
-            #guardo i nodi vicini a l'ultimo nodo preso
-            ultimo_nodo = path[-1]
-            for n in grafo_filtrato.neighbors(ultimo_nodo):
-                if n not in visited:
-                    edge_w = grafo_filtrato[ultimo_nodo][n]['peso']
+            if len(cammino) >= 3: #quindi se la lista dei nodi è maggiore o uguale di tre
+                miglior_cammino = cammino.copy() #mi fa una copia della lista di nodi, così che anche dopo il backtracking mi rimane
+                peso_m = peso
+            else:
+                miglior_cammino = None
+                peso_m = float('inf')
+            for vicino in grafo_filtrato.neighbors(nodo):
+                if vicino not in visited:
+                    peso_arco = grafo_filtrato[nodo][vicino]['peso']
+                    visited.add(vicino)
+                    cammino.append(vicino)
 
-                    visited.add(n) #aggiungo a quelli visitati quello appena visto
-                    path.append(n)
-
-                    candidati_path, candidati_weight = dfs(path, visited, weight+ edge_w)
-
-                    if candidati_weight and candidati_weight < miglior_peso: # se quella appena selezionata è migliore di quella che gia ho
-                        miglior_cammino = candidati_path
-                        miglior_peso = candidati_weight
-
-                    #rimuovo le aggiunte di prima, prima di riprovare altri vicini
-                    path.pop()
-                    visited.remove(n)
-
-            return miglior_cammino, miglior_peso #ritorno la miglior soluzione trovata
-
-        lista_migliori_path = None
-        miglio_peso_globale = float('inf')
-        nodo_partenza = list(grafo_filtrato.nodes)[0]
-        cammino, peso = dfs([nodo_partenza], {nodo_partenza}, 0)
-
-        if cammino is not None and peso < miglio_peso_globale:
-                miglio_peso_globale = peso
-                lista_migliori_path = cammino
-        return lista_migliori_path if lista_migliori_path is not None else []
+                    sub_cammino, sub_peso = self.dfs(vicino, visited, cammino, peso+peso_arco, grafo_filtrato)
+                    if sub_cammino is not None and sub_peso < peso_m:
+                        peso_m = sub_peso
+                        miglior_cammino = sub_cammino
+                    cammino.pop()
+                    visited.remove(vicino)
+            return miglior_cammino, peso_m
 
 
 

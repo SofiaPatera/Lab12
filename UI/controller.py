@@ -54,16 +54,18 @@ class Controller:
         except:
             self._view.show_alert("Inserisci una soglia valida.")
             return
-
-        path = self._model.find_cammino_ric(soglia) #oppure find_cammino_nx
+        path = self._model.find_cammino_nx(soglia) #oppure find_cammino_nx
+        self._view.lista_visualizzazione_3.controls.clear()
         if not path:
             self._view.lista_visualizzazione_3.controls.append(ft.Text("Nessun cammino trovato"))
         else:
-            for p in range(len(path)-1):
-                u,v = path[p], path[p+1]
+            self._view.lista_visualizzazione_3.controls.append(ft.Text('Cammino minimo: \n'))
+            for i in range(len(path)-1):
+                u = path[i]#nodo partenza
+                v = path[i+1] #nodo arrivo
                 peso = self._model.G[u][v]['peso']
-                self._view.lista_visualizzazione_3.controls.append(ft.Text(f" [{u.id}] {u.nome} ---> [{v.id}] {v.nome} (peso={peso:.2f})"))
-
+                row = f"[{u.id}] {u.nome} ---> [{v.id}] {v.nome} [peso: {peso}]"
+                self._view.lista_visualizzazione_3.controls.append(ft.Text(row))
         self._view.page.update()
 
 
