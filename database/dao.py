@@ -11,32 +11,17 @@ class DAO:
         conn = DBConnect.get_connection()
         results = []
         cursor = conn.cursor(dictionary=True)
-        query = """SELECT LEAST(c.id_rifugio1, c.id_rifugio2) as r1, 
-                    GREATEST (c.id_rifugio1, c.id_rifugio2) as r2, 
-                    c.distanza, c.difficolta 
+        query = """SELECT c.id, LEAST(c.id_rifugio1, c.id_rifugio2) as id_rifugio1, 
+                    GREATEST (c.id_rifugio1, c.id_rifugio2) as id_rifugio2, 
+                    c.distanza, c.difficolta, c.anno, c.durata
                     FROM connessione as c 
                     WHERE c.anno <= %s """
         cursor.execute(query, (year,))
         for row in cursor:
-            r1 = row['r1']
-            r2 = row['r2']
-            distanza = row['distanza']
-            difficolta = row['difficolta']
-
-            if difficolta == "facile":
-                fattore = 1
-            elif difficolta == "media":
-                fattore = 1.5
-            elif difficolta == "difficile":
-                fattore = 2
-            else:
-                fattore = 1
-            peso = distanza * fattore
-            results.append(Sentieri(r1, r2, peso))
+            results.append(Sentieri(**row))
         cursor.close()
         conn.close()
         return results
-
 
     @staticmethod
     def leggiRifugio(year):

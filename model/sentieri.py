@@ -10,7 +10,6 @@ class Sentieri:
     difficolta: str
     durata: datetime.time
     anno: int
-    peso : float
 
     def __str__(self):
         return f"{self.id}"
